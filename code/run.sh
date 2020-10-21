@@ -2,15 +2,20 @@
 
 TEST=./preprocessed_test.csv
 TRAIN=./preprocessed_train.csv
+IDEAL=./preprocessed_ideal_40.csv
 
 clear
 if [ -f $TEST ]; then
-	rm preprocessed_test.csv
+	rm $TEST 
 	printf "Removed $TEST\n"
 fi
 if [ -f $TRAIN ]; then
-	rm preprocessed_train.csv
+	rm $TRAIN
 	printf "Removed $TRAIN\n"
+fi
+if [ -f $TRAIN ]; then
+	rm $IDEAL
+	printf "Removed $IDEAL\n"
 fi
 
 time python Preprocesser.py

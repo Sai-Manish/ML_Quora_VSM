@@ -102,10 +102,11 @@ def Lemmatizer(data):
     return dataset
 
 if __name__ == "__main__":
-    filenames = ["../dataset/train.csv", "../dataset/test.csv"]
+    filenames = ["../dataset/train.csv", "../dataset/test.csv", "../dataset/ideal_40.csv"]
 
     for filename in filenames:
-        print(f"\nSaving to file: ./preprocessed_{filename.split('/')[-1]}")
+        outfile = "./preprocessed_" + filename.split('/')[-1]
+        print(f"\nSaving to file: {outfile}")
         i = 0
         for chunk in pd.read_csv(filename, chunksize=2*10**5):
             start = time.time()
@@ -114,9 +115,9 @@ if __name__ == "__main__":
             traind = preprocess(chunk)
             traind = Lemmatizer(traind)
             if i == 1:
-                traind.to_csv(f"./preprocessed_{filename.split('/')[-1]}", index=False, mode='a')
+                traind.to_csv(f"{outfile}", index=False, mode='a')
             else:
-                traind.to_csv(f"./preprocessed_{filename.split('/')[-1]}", index=False, mode='a', header=False)
+                traind.to_csv(f"{outfile}", index=False, mode='a', header=False)
 
             end = time.time()
             print(f"Chunk {i} took {end-start:.2f}s")

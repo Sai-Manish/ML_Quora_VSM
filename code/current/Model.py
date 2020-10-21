@@ -9,7 +9,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.svm import LinearSVC
 from sklearn.metrics import f1_score, plot_confusion_matrix
 
-from imblearn.over_sampling import RandomOverSampler
+from imblearn.over_sampling import SMOTE, RandomOverSampler
 from imblearn.under_sampling import RandomUnderSampler
 
 def Train(dataset):
@@ -19,9 +19,10 @@ def Train(dataset):
     sampler = None
     undersampler = None
 
-    sampler = RandomOverSampler(sampling_strategy=0.15, random_state=6)
+    #  sampler = RandomOverSampler(sampling_strategy=0.15, random_state=6)
+    sampler = SMOTE(sampling_strategy=0.15, n_jobs=7, k_neighbors=500, random_state=6)
     undersampler = RandomUnderSampler(sampling_strategy=0.2, random_state=6)
-    vectorizer = TfidfVectorizer(max_features=300000, ngram_range=(1, 4))
+    vectorizer = TfidfVectorizer(max_features=300000, ngram_range=(1, 4), sublinear_tf=True)
     model = LinearSVC(C=0.3, random_state=42, penalty='l1', dual=False, verbose=2)
 
     X_tfidf = vectorizer.fit_transform(X)
@@ -63,7 +64,7 @@ def Predict(vectorizer, model, dataset):
     output.to_csv('Submissions.csv', index=False)
 
     print("Local testing")
-    ideal_test = pd.read_csv('../dataset/ideal_40.csv').target_y.astype(int8)
+    ideal_test = pd.read_csv('preprocessed_ideal_40.csv').target.astype(int8)
     print(f"Local F1 score: {f1_score(ideal_test, predictions)}")
     plot_confusion_matrix(model, X_tfidf, ideal_test, display_labels=['sincere', 'insincere'])
     plt.ticklabel_format = 'plain'
