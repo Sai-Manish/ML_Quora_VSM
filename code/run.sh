@@ -13,7 +13,7 @@ if [ -f $TRAIN ]; then
 	rm $TRAIN
 	printf "Removed $TRAIN\n"
 fi
-if [ -f $TRAIN ]; then
+if [ -f $IDEAL ]; then
 	rm $IDEAL
 	printf "Removed $IDEAL\n"
 fi

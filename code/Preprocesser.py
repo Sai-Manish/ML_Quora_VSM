@@ -13,6 +13,7 @@ import swifter
 import numpy as np
 
 import nltk
+import contractions
 # nltk.download("stopwords")
 # nltk.download('averaged_perceptron_tagger')
 # nltk.download('wordnet')
@@ -61,11 +62,13 @@ def preprocess(data):
 
     dataset.preprocessed = dataset.preprocessed.str.replace(r'(\d+)', r' \1 ', flags)
     print("Regex filtering done")
-
+    
+    print("Removing some grammatical contractions")
+    dataset.preprocessed = dataset.preprocessed.swifter.allow_dask_on_strings(enable=True).apply(contractions.fix)
     symbols = list(string.punctuation)
-    symbols.remove("'")
     dataset.preprocessed = dataset.preprocessed.str.replace(r"({})+".format("|\\".join(symbols)), ' ', flags)
 
+    print("Tokening words using nltk")
     dataset.preprocessed = dataset.preprocessed.swifter.allow_dask_on_strings(enable=True).apply(nltk.word_tokenize)
 
     dataset.preprocessed = dataset.preprocessed.swifter.allow_dask_on_strings(enable=True).apply(nltk.tag.pos_tag)
@@ -102,10 +105,10 @@ def Lemmatizer(data):
     return dataset
 
 if __name__ == "__main__":
-    filenames = ["../dataset/train.csv", "../dataset/test.csv", "../dataset/ideal_40.csv"]
+    filenames = ["../dataset/train.csv", "../dataset/test.csv"]
 
     for filename in filenames:
-        outfile = "./preprocessed_" + filename.split('/')[-1]
+        outfile = "../processed/preprocessed_" + filename.split('/')[-1]
         print(f"\nSaving to file: {outfile}")
         i = 0
         for chunk in pd.read_csv(filename, chunksize=2*10**5):

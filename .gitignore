@@ -1,4 +1,2 @@
-encodings/
-dataset/***.csv
-submissions/***.csv
-.ipynb_checkpoints
+dataset/**.csv
+processed/***.csv

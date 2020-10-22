@@ -6,6 +6,58 @@
 - Shubhayu Das (IMT2018523)
 - Veerendra S Devaraddi(IMT2018529)
 
+### Folder structure
+--------------------
+```$ tree -L 2
+.
+├── code
+│   ├── current
+│   ├── CustomVectorizer.py
+│   ├── Fastmodel_CM.png
+│   ├── FastModel.py
+│   ├── Logistic.py
+│   ├── model_CM.png
+│   ├── Model.py
+│   ├── Preprocesser.py
+│   └── run.sh
+├── dataset
+│   ├── ideal_40.csv
+│   ├── README.md
+│   ├── test.csv
+│   └── train.csv
+├── processed
+│   ├── preprocessed_test.csv
+│   ├── preprocessed_train.csv
+│   └── README.md
+└── README.md
+
+5 directories, 15 files
+```
+
+### Changelog
+-------------
+
+17:00 22/10/2020 - by Shubhayu Das
+1. Folder structure was changed to keep the processed datasets in a separate folder.
+2. ```.gitignore``` was added to prevent pushing large files to Github.
+3. Model.py was modified to improve performance and reduce run time.
+4. Preprocesser.py was modified to remove some contractions.
+5. ```requirements.txt``` was added, for convenience in installing libraries.
+6. ```run.sh``` was updated to correct for mistake in folder path testing.
+
+### Libraries needed
+--------------------
+pandas
+numpy
+scipy
+matplotlib
+pickle
+sklearn
+imblearn
+contractions
+
+See ```requirements.txt``` for greater details. Or simply run ```pip install -r requirements.txt```.
+
 ### General instructions
 ---------------------------
 1. Commit anytime you get a model which gives a higher score of Kaggle. Also copy ```Model.py, Preprocesser.py``` and
