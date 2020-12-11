@@ -1,12 +1,8 @@
-#!/usr/bin/env python
-# coding: utf-8
-
 import os
 import sys
 import time
 import re
 import string
-from collections import Counter
 
 import pandas as pd
 import swifter
@@ -21,6 +17,7 @@ import contractions
 from nltk.corpus import stopwords, wordnet
 from nltk.stem import WordNetLemmatizer, SnowballStemmer
 
+# Function to get a dict of regex function for filtering
 def getRegexExpr():
     CHEMISTRY_KEYWORDS = ['CH3', 'CH2', 'CH', 'OH', 'COOH', 'OCH3', 'NH2', 'CHO', 'o3', 'h2', 'o2']
     
@@ -31,9 +28,6 @@ def getRegexExpr():
     num_regex = r"(\w{0,5}[0-9]{3,30}\w{0,5})"
     lnum_regex = r"(\w{0,5}[0-9]{30,1000}\w{0,5})"
 
-    # TODO: To fix
-    unit_regex = r"\w*\b[\d]{0,1000}[a-zA-Z]+\b\w*"
-
     return {
         "website": website_regex,
         "mathexpr": math_regex,
@@ -43,69 +37,81 @@ def getRegexExpr():
         "lnumexpr": lnum_regex,
     }
 
-# TODO: to be implemented after finding a proper corpus
-def SpellCorrection(data):
-    dataset = data.copy(deep=True)
-
-    return dataset
+# Helper function to rename the tags
+def get_wordnet_pos(tag):
+    if tag[0] == 'J':
+        return wordnet.ADJ
+    elif tag[0] == 'V':
+        return wordnet.VERB
+    elif tag[0] == 'R':
+        return wordnet.ADV
+    else:
+        return wordnet.NOUN
 
 def preprocess(data):
+
+    # Make a copy of the dataframe
     dataset = data.copy(deep=True)
 
+    # Declare some flags for regex
     flags = re.IGNORECASE | re.DOTALL | re.UNICODE
 
+    # Basically rename the column
     dataset['preprocessed'] = dataset.question_text
     dataset.drop(columns=['question_text'] , inplace=True)
 
+    # Run all the regex expressions one by one, on the entire dataset
     for replacement, regex in getRegexExpr().items():
         dataset.preprocessed = dataset.preprocessed.str.replace(regex, replacement, flags)
 
+    # Separate digits from characters
     dataset.preprocessed = dataset.preprocessed.str.replace(r'(\d+)', r' \1 ', flags)
     print("Regex filtering done")
     
+    # Expanding contraction words
     print("Removing some grammatical contractions")
     dataset.preprocessed = dataset.preprocessed.swifter.allow_dask_on_strings(enable=True).apply(contractions.fix)
-    symbols = list(string.punctuation)
+
+    # Remove all symbols from the strings
+    symbols = [',', '.', '"', ':', ')', '(', '-', '!', '?', '|', ';', "'", '$', '&', '/', '[', ']', '>', '%', '=', '#', '*', '+', '\\', '•',  '~', '@', '£', 
+     '·', '_', '{', '}', '©', '^', '®', '`',  '<', '→', '°', '€', '™', '›',  '♥', '←', '×', '§', '″', '′', 'Â', '█', '½', 'à', '…', 
+     '“', '★', '”', '–', '●', 'â', '►', '−', '¢', '²', '¬', '░', '¶', '↑', '±', '¿', '▾', '═', '¦', '║', '―', '¥', '▓', '—', '‹', '─', 
+     '▒', '：', '¼', '⊕', '▼', '▪', '†', '■', '’', '▀', '¨', '▄', '♫', '☆', 'é', '¯', '♦', '¤', '▲', 'è', '¸', '¾', 'Ã', '⋅', '‘', '∞', 
+     '∙', '）', '↓', '、', '│', '（', '»', '，', '♪', '╩', '╚', '³', '・', '╦', '╣', '╔', '╗', '▬', '❤', 'ï', 'Ø', '¹', '≤', '‡', '√', ]
     dataset.preprocessed = dataset.preprocessed.str.replace(r"({})+".format("|\\".join(symbols)), ' ', flags)
 
+    # Split sentences into an array of word tokens
     print("Tokening words using nltk")
     dataset.preprocessed = dataset.preprocessed.swifter.allow_dask_on_strings(enable=True).apply(nltk.word_tokenize)
 
-    dataset.preprocessed = dataset.preprocessed.swifter.allow_dask_on_strings(enable=True).apply(nltk.tag.pos_tag)
+    # Assign a part of speech positional tags to each of the words
+    #  dataset.preprocessed = dataset.preprocessed.swifter.allow_dask_on_strings(enable=True).apply(nltk.tag.pos_tag)
 
-    def get_wordnet_pos(tag):
-        if tag[0] == 'J':
-            return wordnet.ADJ
-        elif tag[0] == 'V':
-            return wordnet.VERB
-        elif tag[0] == 'R':
-            return wordnet.ADV
-        else:
-            return wordnet.NOUN
-
-    print("Allocation of tags")
+    # Rename all the tags into useful format
+    #  print("Allocation of tags")
     #  Bottleneck step. Do something about this
-    dataset.preprocessed = dataset.preprocessed.apply(lambda x: [(word.lower(), get_wordnet_pos(pos_tag)) for (word, pos_tag) in
-    x])
+    #  dataset.preprocessed = dataset.preprocessed.apply(lambda x: [(word.lower(), get_wordnet_pos(pos_tag)) for (word, pos_tag) in
+    #  x])
 
     return dataset
 
 def Lemmatizer(data):
     dataset = data.copy(deep=True)
 
-    print("Lemmatizing")
-    lemmatizer = WordNetLemmatizer()
-    dataset.preprocessed = dataset.preprocessed.apply(lambda x: [lemmatizer.lemmatize(word, tag) for word, tag in x])
+    # Apply the WordNet lemmatizer
+    #  print("Lemmatizing")
+    #  lemmatizer = WordNetLemmatizer()
+    #  dataset.preprocessed = dataset.preprocessed.apply(lambda x: [lemmatizer.lemmatize(word, tag) for word, tag in x])
 
+    # Apply Snowball stemming on all the English words
     print("Snowball Stemming the words")
     stemmer = SnowballStemmer("english")
-    dataset.preprocessed = dataset.preprocessed.swifter.allow_dask_on_strings(enable=True).apply(lambda x:
-    [stemmer.stem(word) for word in x])
+    dataset.preprocessed = dataset.preprocessed.swifter.allow_dask_on_strings(enable=True).apply(lambda x: [stemmer.stem(word) for word in x])
 
     return dataset
 
 if __name__ == "__main__":
-    filenames = ["../dataset/train.csv", "../dataset/test.csv"]
+    filenames = ["../dataset/train.csv", "../dataset/test.csv"] 
 
     for filename in filenames:
         outfile = "../processed/preprocessed_" + filename.split('/')[-1]
