@@ -28,7 +28,7 @@ def Train(dataset, params={}):
     sampler = SMOTE(sampling_strategy=0.15, k_neighbors=500, random_state=6)
     undersampler = RandomUnderSampler(sampling_strategy=0.2, random_state=6)
 
-    vectorizer = TfidfVectorizer(max_features=250000, ngram_range=(1, 3), sublinear_tf=True)
+    vectorizer = TfidfVectorizer(max_features=250000, ngram_range=(1, 3))
 
     model = SGDClassifier(
                         alpha=1e-6,
@@ -61,6 +61,8 @@ def Train(dataset, params={}):
     print("Training SGD regression model now")
     model.fit(X_tfidf, y)
     print(model)
+
+    pickle.dump(model, open('models/SGDModel.sav', 'wb'))
     print(f"Model training took: {time.time() - start:.4f}s")
 
     return vectorizer, model
@@ -78,15 +80,15 @@ def Predict(vectorizer, model, dataset):
     assert output.shape == (522449, 2)
 
     print("Predictions written back to submission file")
-    output.to_csv('LogisticSubmissions.csv', index=False)
+    output.to_csv('submission/SGD_Submissions.csv', index=False)
 
     print("Local testing")
     ideal_test = pd.read_csv('../dataset/ideal_40.csv').target.astype(int8)
     print(f"Local F1 score: {f1_score(ideal_test, predictions):.5f}")
     plot_confusion_matrix(model, X_tfidf, ideal_test, display_labels=['sincere', 'insincere'])
     plt.ticklabel_format = 'plain'
-    plt.savefig('logistic_model_CM.png')
     plt.show()
+    plt.savefig('confusion_matrices/sgd_model_CM.png')
 
 if __name__ == "__main__":
     start = time.time()
@@ -102,8 +104,6 @@ if __name__ == "__main__":
     now = time.time()
     print(f"Overall time: {now-start:.2f}s")
     start=now
-
-    pickle.dump(model, open('LogisticModel.sav', 'wb'))
 
     testd = pd.read_csv(test_file)
     testd.fillna('', inplace=True)

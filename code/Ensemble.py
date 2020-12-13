@@ -1,8 +1,6 @@
-#!/home/shubhayu/anaconda3/bin/python
-# coding: utf-8
-
 import time
 import pickle
+import gc
 
 import pandas as pd
 from numpy import int8, linspace
@@ -10,15 +8,14 @@ import matplotlib.pyplot as plt
 
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.svm import LinearSVC
+from sklearn.linear_model import SGDClassifier
 from sklearn.naive_bayes import BernoulliNB
-from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import StackingClassifier
+#  from sklearn.calibration import CalibratedClassifierCV
+from sklearn.ensemble import VotingClassifier
 from sklearn.metrics import f1_score, plot_confusion_matrix
 
 from imblearn.over_sampling import SMOTE
 from imblearn.under_sampling import RandomUnderSampler
-
-import lightgbm as lgb
 
 def Train(dataset):
     X = dataset.preprocessed.values.ravel()
@@ -36,25 +33,31 @@ def Train(dataset):
     sampler = SMOTE(sampling_strategy=0.15, n_jobs=7, k_neighbors=500, random_state=6)
     undersampler = RandomUnderSampler(sampling_strategy=0.2, random_state=6)
 
-    LGBMmodel = lgb.LGBMClassifier(n_estimators=600, subsample_for_bin=10000, reg_alpha=0.4,
-    reg_lambda=0.1, subsample=0.9, learning_rate=0.05,
-    silent=False, force_col_wise=True, colsample_bytree=0.8,
-    random_state=6, objective='binary')
+    SGD = SGDClassifier(
+                        alpha=1e-6,
+                        loss='log',
+                        penalty='elasticnet',
+                        validation_fraction=0.1,
+                        l1_ratio=0.5,
+                        n_iter_no_change=100,
+                        n_jobs=-1,
+                        random_state=42
+    )
 
-    LogModel = LogisticRegression(C=0.8, multi_class='ovr', random_state=42, penalty='l1', solver='liblinear',
-    max_iter=1000, verbose=1)
+    SVCmodel = LinearSVC(C=0.3, random_state=42, penalty='l1', max_iter=1000, dual=False)
 
-    SVCmodel = LinearSVC(C=0.3, random_state=42, penalty='l1', max_iter=1000, dual=False, verbose=2)
+    BNBmodel = BernoulliNB(alpha=1e-7)
 
-    NBmodel = BernoulliNB()
-
-    model = StackingClassifier([('nb', NBmodel), ('lsvc', SVCmodel), ('lgbm', LGBMmodel)], final_estimator=LogModel, cv=3, passthrough=True,
-    n_jobs=3, verbose=2)
+    models = [('lsvc', SVCmodel), ('sgd', SGD), ('bnb', BNBmodel)]
+    model = VotingClassifier(models, voting='hard', n_jobs=3, verbose=True)
 
     X_tfidf = vectorizer.fit_transform(X)
     print("TFIDF shape: ", X_tfidf.shape)
     print(f"Vectorizing took: {time.time() - start:.4f}s")
     start = time.time()
+
+    del X
+    gc.collect()
 
     if sampler:
         X_tfidf, y = sampler.fit_resample(X_tfidf, y)
@@ -87,17 +90,18 @@ def Predict(vectorizer, model, dataset):
     assert output.shape == (522449, 2)
 
     print("Predictions written back to submission file")
-    output.to_csv('EnsembleSubmissions.csv', index=False)
+    output.to_csv('submission/EnsembleSubmissions.csv', index=False)
 
     print("Local testing")
     ideal_test = pd.read_csv('../dataset/ideal_40.csv').target.astype(int8)
     print(f"Local F1 score: {f1_score(ideal_test, predictions):.6f}")
     plot_confusion_matrix(model, X_tfidf, ideal_test, display_labels=['sincere', 'insincere'])
     plt.ticklabel_format = 'plain'
-    plt.savefig('ensemble_model_CM.png')
     plt.show()
+    plt.savefig('confusion_matrices/ensemble_model_CM.png')
 
 if __name__ == "__main__":
+    gc.enable()
     start = time.time()
     train_file = "../processed/preprocessed_train.csv"
     test_file = "../processed/preprocessed_test.csv"
@@ -117,9 +121,4 @@ if __name__ == "__main__":
     Predict(vectorizer, model, testd)
     print("Predictions successfully written back to file\n")
 
-    pickle.dump(model, open('Ensemble.sav', 'wb'))
-    with open("TFIDF_words.txt", "w") as outputFile:
-        for word in vectorizer.get_feature_names():
-            outputFile.write("%s\n" % word)
-
-    print("TFIDF features written to file")
+    pickle.dump(model, open('models/Ensemble.sav', 'wb'))

@@ -18,6 +18,7 @@ from nltk.corpus import stopwords, wordnet
 from nltk.stem import WordNetLemmatizer, SnowballStemmer
 
 # Function to get a dict of regex function for filtering
+# FIXME: update the regex expressions for improved performance
 def getRegexExpr():
     CHEMISTRY_KEYWORDS = ['CH3', 'CH2', 'CH', 'OH', 'COOH', 'OCH3', 'NH2', 'CHO', 'o3', 'h2', 'o2']
     
@@ -32,9 +33,9 @@ def getRegexExpr():
         "website": website_regex,
         "mathexpr": math_regex,
         "chemexpr": chemistry_regex,
-        "hexexpr": hex_regex,
+        "": hex_regex,
         "snumexpr": num_regex,
-        "lnumexpr": lnum_regex,
+        "": lnum_regex,
     }
 
 # Helper function to rename the tags
@@ -56,13 +57,12 @@ def preprocess(data):
     # Declare some flags for regex
     flags = re.IGNORECASE | re.DOTALL | re.UNICODE
 
-    # Basically rename the column
-    dataset['preprocessed'] = dataset.question_text
-    dataset.drop(columns=['question_text'] , inplace=True)
+    # Rename the column
+    dataset = dataset.rename(columns={"question_text": "preprocessed"})
 
     # Run all the regex expressions one by one, on the entire dataset
     for replacement, regex in getRegexExpr().items():
-        dataset.preprocessed = dataset.preprocessed.str.replace(regex, replacement, flags)
+      dataset.preprocessed = dataset.preprocessed.str.replace(regex, replacement, flags)
 
     # Separate digits from characters
     dataset.preprocessed = dataset.preprocessed.str.replace(r'(\d+)', r' \1 ', flags)
@@ -107,6 +107,7 @@ def Lemmatizer(data):
     print("Snowball Stemming the words")
     stemmer = SnowballStemmer("english")
     dataset.preprocessed = dataset.preprocessed.swifter.allow_dask_on_strings(enable=True).apply(lambda x: [stemmer.stem(word) for word in x])
+    dataset.preprocessed = dataset.preprocessed.apply(" ".join)
 
     return dataset
 
@@ -117,14 +118,14 @@ if __name__ == "__main__":
         outfile = "../processed/preprocessed_" + filename.split('/')[-1]
         print(f"\nSaving to file: {outfile}")
         i = 0
-        for chunk in pd.read_csv(filename, chunksize=2*10**5):
+        for chunk in pd.read_csv(filename, chunksize=2e5):
             start = time.time()
             i += 1
             print(f"\nChunk {i} dims: {chunk.shape}")
             traind = preprocess(chunk)
             traind = Lemmatizer(traind)
             if i == 1:
-                traind.to_csv(f"{outfile}", index=False, mode='a')
+                traind.to_csv(f"{outfile}", index=False, mode='w')
             else:
                 traind.to_csv(f"{outfile}", index=False, mode='a', header=False)
 
